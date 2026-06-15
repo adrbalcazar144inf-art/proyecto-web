@@ -1,0 +1,7 @@
+{
+  "name": "demo/huella-bootstrap",
+  "description": "Demo Bootstrap para probar WebAuthn/passkeys con PHP",
+  "require": {
+    "web-auth/webauthn-lib": "^5.3"
+  }
+}

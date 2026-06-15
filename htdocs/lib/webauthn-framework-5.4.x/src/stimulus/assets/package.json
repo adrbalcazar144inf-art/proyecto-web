@@ -1,0 +1,104 @@
+{
+    "name": "@web-auth/webauthn-stimulus",
+    "description": "Webauthn integration for Symfony",
+    "license": "MIT",
+    "version": "0.0.0-development",
+    "main": "src/index.js",
+    "types": "src/index.d.ts",
+    "symfony": {
+        "controllers": {
+            "webauthn": {
+                "main": "src/controller.js",
+                "name": "web-auth/webauthn-stimulus",
+                "webpackMode": "eager",
+                "fetch": "eager",
+                "enabled": false
+            },
+            "authentication": {
+                "main": "src/authentication-controller.js",
+                "name": "web-auth/authentication",
+                "webpackMode": "eager",
+                "fetch": "eager",
+                "enabled": true
+            },
+            "registration": {
+                "main": "src/registration-controller.js",
+                "name": "web-auth/registration",
+                "webpackMode": "eager",
+                "fetch": "eager",
+                "enabled": true
+            }
+        },
+        "importmap": {
+            "@hotwired/stimulus": "^3.0.0",
+            "@simplewebauthn/browser": "^13.2.0",
+            "@web-auth/webauthn-stimulus": "path:%PACKAGE%/src/index.js",
+            "@web-auth/webauthn-stimulus/webauthn": "path:%PACKAGE%/src/controller.js",
+            "@web-auth/webauthn-stimulus/authentication": "path:%PACKAGE%/src/authentication-controller.js",
+            "@web-auth/webauthn-stimulus/registration": "path:%PACKAGE%/src/registration-controller.js",
+            "@web-auth/webauthn-stimulus/signals": "path:%PACKAGE%/src/signals.js"
+        }
+    },
+    "peerDependencies": {
+        "@hotwired/stimulus": "^3.0.0",
+        "@simplewebauthn/browser": "^13.2.0"
+    },
+    "scripts": {
+        "version": "echo \"Version will be set by CI/CD or manually\"",
+        "build:types": "find src -name '*.d.ts' -delete && tsc",
+        "prepublishOnly": "npm run build:types"
+    },
+    "devDependencies": {
+        "@hotwired/stimulus": "^3.0.0",
+        "@simplewebauthn/browser": "^13.2.0",
+        "@babel/core": "^7.0.0",
+        "@babel/preset-env": "^7.0.0",
+        "@symfony/stimulus-testing": "^2.0.0",
+        "@testing-library/dom": "^10.0.0",
+        "babel-jest": "^29.0.0",
+        "jest": "^29.0.0",
+        "jest-environment-jsdom": "^29.0.0",
+        "typescript": "^5.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/web-auth/webauthn-framework.git",
+        "directory": "src/stimulus"
+    },
+    "homepage": "https://github.com/web-auth/webauthn-framework/tree/5.3.x/src/stimulus",
+    "bugs": {
+        "url": "https://github.com/web-auth/webauthn-framework/issues"
+    },
+    "keywords": [
+        "webauthn",
+        "fido",
+        "fido2",
+        "stimulus",
+        "symfony",
+        "symfony-ux",
+        "authentication",
+        "passkey",
+        "passwordless",
+        "secure-payment-confirmation",
+        "payment",
+        "spc"
+    ],
+    "author": {
+        "name": "Florent Morselli",
+        "url": "https://github.com/Spomky"
+    },
+    "contributors": [
+        {
+            "name": "All contributors",
+            "url": "https://github.com/web-auth/webauthn-framework/graphs/contributors"
+        }
+    ],
+    "files": [
+        "src/",
+        "README.md",
+        "LICENSE"
+    ],
+    "publishConfig": {
+        "access": "public"
+    }
+}

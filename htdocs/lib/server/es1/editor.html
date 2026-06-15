@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editor de Imágenes Avanzado</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --neon: #00ffff;
+      --dark: #001414;
+      --bg: #000814;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: var(--bg);
+      color: var(--neon);
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    body { display: flex; flex-direction: column; height: 100vh; }
+
+    .toolbar {
+      background: var(--dark);
+      border-bottom: 2px solid var(--neon);
+      padding: 10px;
+      display: flex; flex-wrap: wrap; gap: 10px;
+      align-items: center; position: sticky; top: 0; z-index: 10;
+    }
+    .toolbar > *, .toolbar label input, select, button {
+      background: transparent;
+      color: var(--neon);
+      border: 1px solid var(--neon);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 0.9rem;
+    }
+    button.active, #eraser-btn.active {
+      background: var(--neon);
+      color: var(--bg);
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      overflow: hidden;
+    }
+    #canvas-container {
+      flex: 3;
+      display: flex; justify-content: center; align-items: center;
+      background: #000;
+      border: 2px solid var(--neon);
+      padding: 10px; overflow: auto;
+    }
+    canvas {
+      background: #111;
+      border: 1px solid var(--neon);
+      max-width: 100%;
+    }
+
+    #layers-panel {
+      flex: 1;
+      background: var(--dark);
+      border-left: 2px solid var(--neon);
+      padding: 10px;
+      overflow-y: auto;
+    }
+    #layers-list .list-group-item {
+      background: var(--bg);
+      border: 1px solid var(--neon);
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 8px; margin-bottom: 5px;
+    }
+    .layer-btns button {
+      background: none;
+      border: 1px solid var(--neon);
+      color: var(--neon);
+      font-size: 12px; margin-left: 5px;
+    }
+
+    #properties-panel { display: flex; gap: 10px; flex-wrap: wrap; }
+    #properties-panel label {
+      display: flex; flex-direction: column;
+      font-size: 0.8rem; text-align: center;
+    }
+
+    @media (max-width: 991px) {
+      body { overflow: auto; }
+      .content { flex-direction: column; }
+      #canvas-container, #layers-panel { width: 100%; }
+      #layers-panel {
+        border-left: none;
+        border-top: 2px solid var(--neon);
+        max-height: 150px;
+        overflow-x: auto;
+      }
+      #layers-list {
+        display: flex; flex-wrap: nowrap; gap: 10px;
+      }
+      #layers-list .list-group-item {
+        flex: 0 0 auto; margin-bottom: 0;
+      }
+    }
+    @media (max-width: 576px) {
+      .toolbar { justify-content: center; gap: 8px; padding: 8px; }
+      .toolbar > * { font-size: 0.8rem; padding: 4px 6px; }
+      #canvas-container { height: 300px; }
+      #layers-panel { height: 130px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div id="properties-panel">
+      <label>Color<input type="color" id="prop-color" disabled/></label>
+      <label>Opacidad<input type="range" id="prop-opacity" min="0" max="1" step="0.01" disabled/></label>
+      <label>Tamaño<input type="number" id="prop-scale" min="1" max="500" disabled/></label>
+      <label>Rotación<input type="number" id="prop-rotation" min="0" max="360" disabled/></label>
+    </div>
+
+    <select id="stickers-select">
+      <option value="">Sticker</option>
+      <option value="stickers/emoji1.png">😀 Emoji 1</option>
+      <option value="stickers/emoji2.png">😎 Emoji 2</option>
+      <option value="stickers/frame1.png">📸 Marco 1</option>
+    </select>
+
+    <input type="file" id="upload-image" accept="image/*" />
+
+    <button id="draw-mode">🖌 Dibujar</button>
+    <button id="eraser-btn">🧽 Borrar</button>
+    <button id="remove-bg-btn">🖼️ Quitar fondo</button>
+    <button id="add-text">Texto</button>
+    <button id="free-crop-btn">✂️ Recorte</button>
+
+    <label>Color<input type="color" id="color-picker" value="#00ffff" /></label>
+    <label>Tamaño<input type="range" id="size-slider" min="1" max="50" value="5" /></label>
+    <label>Tolerancia Recorte<input type="range" id="crop-tolerance" min="200" max="255" value="240" /></label>
+
+    <select id="filter-select">
+      <option value="">Sin filtro</option>
+      <option value="grayscale">Gris</option>
+      <option value="invert">Invertir</option>
+      <option value="sepia">Sepia</option>
+      <option value="brightness">Brillo</option>
+    </select>
+
+    <button id="undo-btn">↩ Deshacer</button>
+    <button id="redo-btn">↪ Rehacer</button>
+    <button id="export-img">📤 PNG</button>
+  </div>
+
+  <div class="content">
+    <div id="canvas-container">
+      <canvas id="editor-canvas" width="800" height="600"></canvas>
+    </div>
+    <aside id="layers-panel">
+      <h5>Capas</h5>
+      <ul id="layers-list" class="list-group"></ul>
+    </aside>
+  </div>
+
+  <!-- Librerías y scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <script>
+document.addEventListener('DOMContentLoaded', () => {
+  const canvas = new fabric.Canvas('editor-canvas', {
+    isDrawingMode: false,
+    backgroundColor: '#000'
+  });
+
+  const history = { undoStack: [], redoStack: [] };
+  let drawing = false, isCropping = false, isErasing = false, cropPath;
+
+  const $ = id => document.getElementById(id);
+  const colorPicker    = $('color-picker'),
+        sizeSlider     = $('size-slider'),
+        cropTolerance  = $('crop-tolerance');
+
+  const debounce = (fn, t = 100) => {
+    let tm;
+    return (...args) => {
+      clearTimeout(tm);
+      tm = setTimeout(() => fn(...args), t);
+    };
+  };
+
+  function saveState() {
+    const j = canvas.toJSON(['selectable']);
+    const last = history.undoStack.at(-1);
+    if (JSON.stringify(j) !== JSON.stringify(last)) {
+      history.undoStack.push(j);
+      if (history.undoStack.length > 50) history.undoStack.shift();
+      history.redoStack = [];
+    }
+  }
+  function loadState(state) {
+    canvas.loadFromJSON(state, () => canvas.renderAll());
+  }
+  saveState();
+
+  function deactivateAllModes() {
+    drawing = isErasing = isCropping = canvas.isDrawingMode = false;
+    ['draw-mode','eraser-btn','free-crop-btn'].forEach(id =>
+      $(id).classList.remove('active')
+    );
+  }
+  function updatePropertiesPanel(obj) {
+    ['prop-color','prop-opacity','prop-scale','prop-rotation'].forEach(id => {
+      const el = $(id);
+      el.disabled = !obj;
+      if (!obj) {
+        if (id === 'prop-color')    el.value = '#000000';
+        if (id === 'prop-opacity')  el.value = 1;
+        if (id === 'prop-scale')    el.value = 100;
+        if (id === 'prop-rotation') el.value = 0;
+      } else {
+        if (id === 'prop-color')    el.value = obj.fill || '#000000';
+        if (id === 'prop-opacity')  el.value = obj.opacity ?? 1;
+        if (id === 'prop-scale')    el.value = Math.round((obj.scaleX || 1) * 100);
+        if (id === 'prop-rotation') el.value = obj.angle || 0;
+      }
+    });
+  }
+
+  canvas.on('object:added',   debounce(() => { saveState(); refreshLayers(); }));
+  canvas.on('object:modified',debounce(() => { saveState(); refreshLayers(); }));
+  canvas.on('object:removed', debounce(() => { saveState(); refreshLayers(); }));
+
+  canvas.on('after:render', () => {
+    canvas.getObjects('line').forEach(l => canvas.remove(l));
+    drawGrid();
+  });
+
+  $('draw-mode').onclick = () => {
+    deactivateAllModes();
+    if (!drawing) {
+      drawing = true;
+      canvas.isDrawingMode = true;
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+      canvas.freeDrawingBrush.color = colorPicker.value;
+      canvas.freeDrawingBrush.width = +sizeSlider.value;
+      $('draw-mode').classList.add('active');
+    }
+  };
+  colorPicker.onchange  = () => canvas.freeDrawingBrush && (canvas.freeDrawingBrush.color = colorPicker.value);
+  sizeSlider.oninput    = () => canvas.freeDrawingBrush && (canvas.freeDrawingBrush.width = +sizeSlider.value);
+
+  $('eraser-btn').onclick = () => {
+    deactivateAllModes();
+    isErasing = true;
+    canvas.isDrawingMode = true;
+    canvas.freeDrawingBrush = new fabric.EraserBrush(canvas);
+    canvas.freeDrawingBrush.width = +sizeSlider.value;
+    $('eraser-btn').classList.add('active');
+  };
+
+  $('add-text').onclick = () => {
+    canvas.add(new fabric.IText('Escribe aquí', {
+      left: 100, top: 100,
+      fill: colorPicker.value, fontSize: 30
+    }));
+    saveState();
+  };
+
+  $('upload-image').onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return alert('No hay archivo seleccionado');
+
+    const reader = new FileReader();
+    reader.onerror = () => alert('Error al leer el archivo');
+    reader.onload = evt => {
+      canvas.clear();
+      drawGrid();
+
+      fabric.Image.fromURL(evt.target.result, img => {
+        if (!img) return alert('No se pudo crear la imagen');
+
+        img.scaleToWidth(canvas.getWidth());
+        img.scaleToHeight(canvas.getHeight());
+        img.set({ left: 0, top: 0 });
+
+        canvas.add(img);
+        canvas.requestRenderAll();
+        saveState();
+        refreshLayers();
+      }, { crossOrigin: 'anonymous' });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  $('filter-select').onchange = e => {
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.type !== 'image') return alert('Selecciona una imagen');
+    const map = {
+      grayscale: new fabric.Image.filters.Grayscale(),
+      invert:    new fabric.Image.filters.Invert(),
+      sepia:     new fabric.Image.filters.Sepia(),
+      brightness:new fabric.Image.filters.Brightness({ brightness: 0.2 })
+    };
+    obj.filters = [ map[e.target.value] ].filter(Boolean);
+    obj.applyFilters();
+    canvas.renderAll();
+  };
+
+  $('remove-bg-btn').onclick = () => {
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.type !== 'image') return alert('Selecciona una imagen');
+    const el = obj.getElement(), tmp = document.createElement('canvas');
+    tmp.width = el.width; tmp.height = el.height;
+    const ctx = tmp.getContext('2d');
+    ctx.drawImage(el, 0, 0);
+    const data = ctx.getImageData(0, 0, tmp.width, tmp.height);
+    const tol = +cropTolerance.value;
+    for (let i = 0; i < data.data.length; i += 4) {
+      if (data.data[i] > tol && data.data[i+1] > tol && data.data[i+2] > tol)
+        data.data[i+3] = 0;
+    }
+    ctx.putImageData(data, 0, 0);
+    fabric.Image.fromURL(tmp.toDataURL(), img => {
+      img.set({
+        left: obj.left, top: obj.top,
+        scaleX: obj.scaleX, scaleY: obj.scaleY,
+        angle: obj.angle
+      });
+      canvas.remove(obj).add(img).setActiveObject(img).renderAll();
+      saveState();
+    });
+  };
+
+  $('free-crop-btn').onclick = () => {
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.type !== 'image') return alert('Selecciona una imagen');
+    deactivateAllModes();
+    isCropping = true;
+    canvas.isDrawingMode = true;
+    const brush = new fabric.PencilBrush(canvas);
+    brush.color = '#0ff'; brush.width = 2;
+    canvas.freeDrawingBrush = brush;
+    $('free-crop-btn').classList.add('active');
+  };
+  canvas.on('path:created', opt => {
+    if (!isCropping) return;
+    cropPath = opt.path;
+    cropPath.selectable = cropPath.evented = false;
+    const img = canvas.getActiveObject();
+    const clipped = new fabric.Image(img.getElement(), {
+      left: img.left, top: img.top,
+      scaleX: img.scaleX, scaleY: img.scaleY,
+      angle: img.angle, clipPath: cropPath
+    });
+    canvas.remove(img).add(clipped);
+    isCropping = false; cropPath = null;
+    saveState(); refreshLayers();
+  });
+
+  $('stickers-select').onchange = e => {
+    if (!e.target.value) return;
+    fabric.Image.fromURL(e.target.value, img => {
+      img.set({ left: canvas.width/2 - 50, top: canvas.height/2 - 50 });
+      img.scaleToWidth(100);
+      canvas.add(img).setActiveObject(img).renderAll();
+      saveState(); refreshLayers();
+      e.target.value = '';
+    });
+  };
+
+  ['selection:created','selection:updated'].forEach(evt =>
+    canvas.on(evt, e => updatePropertiesPanel(e.target))
+  );
+  canvas.on('selection:cleared', () => updatePropertiesPanel(null));
+  $('prop-color').onchange    = () => { const o = canvas.getActiveObject(); if (o) o.set('fill', $('prop-color').value); canvas.requestRenderAll(); saveState(); };
+  $('prop-opacity').oninput   = () => { const o = canvas.getActiveObject(); if (o) o.set('opacity', +$('prop-opacity').value); canvas.requestRenderAll(); saveState(); };
+  $('prop-scale').onchange    = () => { const o = canvas.getActiveObject(); if (o) { const s = +$('prop-scale').value / 100; o.scaleX = o.scaleY = s; canvas.requestRenderAll(); saveState(); } };
+  $('prop-rotation').onchange = () => { const o = canvas.getActiveObject(); if (o) o.angle = +$('prop-rotation').value; canvas.requestRenderAll(); saveState(); };
+
+  $('undo-btn').onclick = () => {
+    if (history.undoStack.length > 1) {
+      history.redoStack.push(history.undoStack.pop());
+      canvas._loading = true;
+      loadState(history.undoStack.at(-1));
+      canvas._loading = false;
+    }
+  };
+  $('redo-btn').onclick = () => {
+    if (history.redoStack.length) {
+      const nxt = history.redoStack.pop();
+      history.undoStack.push(nxt);
+      canvas._loading = true;
+      loadState(nxt);
+      canvas._loading = false;
+    }
+  };
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'z') $('undo-btn').click();
+    if (e.ctrlKey && e.key === 'y') $('redo-btn').click();
+  });
+
+  $('export-img').onclick = () => {
+    const link = document.createElement('a');
+    link.download = 'imagen_editada.png';
+    link.href = canvas.toDataURL({ format: 'png' });
+    link.click();
+  };
+
+  function refreshLayers() {
+    const list = $('layers-list');
+    list.innerHTML = '';
+    canvas.getObjects().slice().reverse().forEach(obj => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      li.textContent = `${obj.type} ${canvas.getObjects().indexOf(obj)}`;
+
+      const toggle = document.createElement('button');
+      toggle.textContent = obj.visible ? '👁' : '🚫';
+      toggle.onclick = () => { obj.visible = !obj.visible; canvas.renderAll(); refreshLayers(); };
+
+      const del = document.createElement('button');
+      del.textContent = '🗑';
+      del.onclick = () => { canvas.remove(obj); refreshLayers(); };
+
+      const span = document.createElement('span');
+      span.className = 'layer-btns';
+      span.append(toggle, del);
+
+      li.append(span);
+      li.onclick = () => { canvas.setActiveObject(obj); canvas.renderAll(); };
+      list.append(li);
+    });
+  }
+
+  function drawGrid() {
+    const size = 50, w = canvas.getWidth(), h = canvas.getHeight();
+    for (let i = 0; i < w/size; i++) {
+      const line = new fabric.Line([i*size,0,i*size,h], {
+        stroke: '#005555', selectable: false, evented: false, excludeFromExport: true
+      });
+      canvas.add(line).sendToBack();
+    }
+    for (let i = 0; i < h/size; i++) {
+      const line = new fabric.Line([0,i*size,w,i*size], {
+        stroke: '#005555', selectable: false, evented: false, excludeFromExport: true
+      });
+      canvas.add(line).sendToBack();
+    }
+  }
+  drawGrid();
+
+  let zoomT;
+  canvas.on('mouse:wheel', opt => {
+    clearTimeout(zoomT);
+    zoomT = setTimeout(() => {
+      let z = canvas.getZoom() * (0.999 ** opt.e.deltaY);
+      z = Math.min(5, Math.max(0.2, z));
+      canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, z);
+      canvas.requestRenderAll();
+    }, 50);
+    opt.e.preventDefault();
+    opt.e.stopPropagation();
+  });
+});
+
+  </script>
+</body>
+</html>
