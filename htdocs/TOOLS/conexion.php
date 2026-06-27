@@ -4,10 +4,10 @@
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 function conectarse() {
-    $servidor = "sql204.ezyro.com";  
-    $usuario = "ezyro_41317741";              
+    $servidor = "sjeueie04.com";  
+    $usuario = "ezyro_jsueueu4741";              
     $clave = "18f0308";               
-    $base_datos = "ezyro_41317741_bd2";       
+    $base_datos = "ezjeudu7741_bd2";       
 
     
  
