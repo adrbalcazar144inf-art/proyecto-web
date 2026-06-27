@@ -1,7 +1,0 @@
-{
-  "name": "demo/passkey-bootstrap",
-  "description": "Demo Bootstrap + PHP para registro y login con passkeys/WebAuthn",
-  "require": {
-    "php": ">=8.0"
-  }
-}
