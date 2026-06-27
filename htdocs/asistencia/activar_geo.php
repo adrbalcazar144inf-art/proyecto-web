@@ -9,11 +9,7 @@ if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
 
 if (isset($_GET['qr'])) {
     require_once __DIR__ . '/../lib/phpqrcode/qrlib.php';
-    header('Content-Type: image/png');
-    QRcode::png("https://{$_SERVER['HTTP_HOST']}" . dirname($_SERVER['SCRIPT_NAME']) . "/form_asistencia.php", null, QR_ECLEVEL_L, 6, 2);
-    exit;
-}
-if (isset($_GET['set_geo'])) { $_SESSION['geo_activada'] = true; exit; }
+     { $_SESSION['geo_activada'] = true; exit; }
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -52,17 +48,7 @@ body { background: var(--bg-dark); color: var(--neon-primary); font-family: 'Seg
     <button id="enable-loc">Activar Ubicación</button>
     <img id="qr-img" src="?qr=1" alt="QR Dinámico">
   </div>
-</div>
 
-<script>
-const btn = document.getElementById('enable-loc'), box = document.getElementById('qr-box'), qr = document.getElementById('qr-img');
-btn.addEventListener('click', () => {
-  if (!navigator.geolocation) return alert('Navegador no soporta geolocalización.');
-  navigator.geolocation.getCurrentPosition(() => {
-    qr.style.display = 'block'; box.classList.add('unlocked'); btn.style.display = 'none';
-  }, () => alert('Debes permitir la ubicación para continuar.'), { enableHighAccuracy:true });
-});
-qr.addEventListener('click', () => { fetch('?set_geo=1').then(() => location.href = 'form_asistencia.php'); });
 </script>
 </body>
 </html>
